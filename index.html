@@ -549,6 +549,21 @@ document.querySelectorAll('td[contenteditable]').forEach(td=>{const v=get(td.dat
   td.addEventListener('input',()=>set(td.dataset.k,td.textContent));});
 
 document.querySelectorAll('.qcard').forEach(c=>c.querySelector('.qbtn').onclick=()=>{c.classList.toggle('open');c.querySelector('.qbtn').textContent=c.classList.contains('open')?'Ẩn đáp án':'Xem đáp án';});
+/* sound effects (Web Audio, no files) */
+const sfx=(()=>{let ac=null;const ctx=()=>{if(!ac){try{ac=new (window.AudioContext||window.webkitAudioContext)()}catch(e){}}if(ac&&ac.state==='suspended')ac.resume();return ac;};
+ function tone(f,t0,d,type,vol,f2){const a=ctx();if(!a)return;const o=a.createOscillator(),g=a.createGain();o.type=type||'triangle';
+  o.frequency.setValueAtTime(f,a.currentTime+t0);if(f2)o.frequency.linearRampToValueAtTime(f2,a.currentTime+t0+d);
+  g.gain.setValueAtTime(0.0001,a.currentTime+t0);g.gain.exponentialRampToValueAtTime(vol||0.25,a.currentTime+t0+0.02);
+  g.gain.exponentialRampToValueAtTime(0.0001,a.currentTime+t0+d);o.connect(g).connect(a.destination);o.start(a.currentTime+t0);o.stop(a.currentTime+t0+d+0.05);}
+ return{
+  unlock(){ctx()},
+  tick(){tone(1200,0,0.04,'square',0.06)},
+  win(){[523,659,784,1047].forEach((f,i)=>tone(f,i*0.11,0.18,'triangle',0.3));
+        [784,988,1175,1568].forEach((f,i)=>tone(f,0.5+i*0.07,0.25,'sine',0.22));tone(1047,0.85,0.6,'triangle',0.3);
+        for(let i=0;i<10;i++)tone(2000+Math.random()*2000,0.9+i*0.06,0.08,'sine',0.08);},
+  lose(){tone(392,0,0.38,'sawtooth',0.18,370);tone(370,0.42,0.38,'sawtooth',0.18,349);tone(349,0.84,0.38,'sawtooth',0.18,330);
+         tone(330,1.26,1.1,'sawtooth',0.18,262);}
+ };})();
 /* lucky wheel */
 const ART={
 lolli:`<svg viewBox="0 0 120 120"><defs><radialGradient id="lg" cx=".35" cy=".3"><stop offset="0" stop-color="#fff"/><stop offset=".25" stop-color="#FFB3CC"/><stop offset="1" stop-color="#FF4F8B"/></radialGradient></defs>
@@ -600,13 +615,14 @@ function drawList(){document.getElementById('prizeList').innerHTML=PRIZES.map(p=
   spinBtn.disabled=!left.length;}
 spinBtn.onclick=()=>{if(spinning||!left.length)return;spinning=true;spinBtn.disabled=true;
   const n=left.length,seg=360/n,win=Math.floor(Math.random()*n),center=(win+.5)*seg,jit=(Math.random()-.5)*seg*.6;
-  const target=rot+360*6+((360-(center+jit)-rot%360)%360+360)%360;rot=target;wheel.style.transform=`rotate(${rot}deg)`;
+  const target=rot+360*6+((360-(center+jit)-rot%360)%360+360)%360;rot=target;wheel.style.transform=`rotate(${rot}deg)`;sfx.unlock();
+  {let k=0;const iv=()=>{if(k>40)return;sfx.tick();k++;setTimeout(iv,40+k*k*2.6);};iv();}
   setTimeout(()=>{const p=P(left[win]);spinning=false;
     document.getElementById('mImg').innerHTML=ART[p.id].replace(/id="lg"/g,'id="lgM"').replace(/url\(#lg\)/g,'url(#lgM)');
     document.getElementById('mTitle').textContent=p.luck?'Chúc may mắn lần sau!':'Chúc mừng! 🎉';
     document.getElementById('mSub').textContent=p.msg;
     document.getElementById('modal').classList.add('on');document.getElementById('modal').dataset.id=p.id;
-    if(!p.luck)burst();},5300);};
+    if(!p.luck){burst();sfx.win();}else sfx.lose();},5300);};
 document.getElementById('mClose').onclick=()=>{const m=document.getElementById('modal');m.classList.remove('on');
   left=left.filter(x=>x!==m.dataset.id);drawWheel();drawList();};
 document.getElementById('resetWheel').onclick=()=>{if(spinning)return;left=PRIZES.map(p=>p.id);drawWheel();drawList();};
